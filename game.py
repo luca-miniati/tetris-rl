@@ -181,7 +181,6 @@ class Game:
         return [
             self.grid,
             self.figure,
-            self.state,
         ]
 
     def new_figure(self):
