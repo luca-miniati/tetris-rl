@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim
 
 
-class Learner:
+class TetrisLearner:
     def __init__(self, model, lr, discount_factor):
         self.model = model
         self.lr = lr
