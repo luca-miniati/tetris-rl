@@ -1,6 +1,9 @@
 import random
 
+import numpy as np
 import pygame
+import torch
+from copy import deepcopy
 
 
 class Game:
@@ -8,7 +11,7 @@ class Game:
         self.is_agent_playing = is_agent_playing
         self.box_size = box_size
 
-        self.num_rows = 20
+        self.num_rows = 16
         self.num_columns = 10
 
         if not self.is_agent_playing:
@@ -57,6 +60,9 @@ class Game:
             ],
         ]
 
+        self.score = 0
+        self.points = -8
+
         self.action_space = [
             self.no_action,
             self.rotate_c,
@@ -67,21 +73,38 @@ class Game:
             self.hard_drop,
         ]
 
+        self.reset()
+
     def init_grid(self):
         self.grid = []
         for _ in range(self.num_columns):
-            self.grid.append([None] * self.num_rows)
+            self.grid.append([0] * self.num_rows)
 
     def init_piece(self):
         self.piece_index = random.randint(0, len(self.pieces) - 1)
         self.piece_rotation_index = 0
         self.piece = self.pieces[self.piece_index][self.piece_rotation_index]
-        self.piece_x = self.num_columns // 2
+        min_x, max_x = self.piece_width(self.piece)
+        self.piece_x = random.randint(
+            1 if min_x < 0 else 0,
+            self.num_columns - 1 - max_x
+        )
         self.piece_y = 0
+        self.points = -8
+
+    def piece_width(self, piece):
+        min_x = 5
+        max_x = -5
+        for x, _ in piece:
+            min_x = min(min_x, x)
+            max_x = max(max_x, x)
+        return min_x, max_x
 
     def reset(self):
         self.init_grid()
         self.piece = None
+        self.score = 0
+        self.points = -8
 
     def no_action(self):
         pass
@@ -90,11 +113,21 @@ class Game:
         self.piece_rotation_index += 1
         self.piece_rotation_index %= len(self.pieces[self.piece_index])
         self.piece = self.pieces[self.piece_index][self.piece_rotation_index]
+        if self.collision():
+            self.piece_rotation_index -= 1
+            self.piece_rotation_index %= len(self.pieces[self.piece_index])
+            self.piece = self.pieces[self.piece_index]
+            [self.piece_rotation_index]
 
     def rotate_cc(self):
         self.piece_rotation_index -= 1
         self.piece_rotation_index %= len(self.pieces[self.piece_index])
         self.piece = self.pieces[self.piece_index][self.piece_rotation_index]
+        if self.collision():
+            self.piece_rotation_index += 1
+            self.piece_rotation_index %= len(self.pieces[self.piece_index])
+            self.piece = self.pieces[self.piece_index]
+            [self.piece_rotation_index]
 
     def move_right(self):
         self.piece_x += 1
@@ -118,16 +151,26 @@ class Game:
         self.set_piece()
 
     def collision(self):
+        if self.piece:
+            for x, y in self.piece:
+                absolute_x = self.piece_x + x
+                absolute_y = self.piece_y + y
+                if (
+                    absolute_x < 0
+                    or absolute_x >= self.num_columns
+                    or absolute_y >= self.num_rows
+                    or self.grid[absolute_x][absolute_y] == 1
+                ):
+                    return True
+        return False
+
+    def piece_collision(self):
         for x, y in self.piece:
             absolute_x = self.piece_x + x
             absolute_y = self.piece_y + y
-            if (
-                absolute_x < 0
-                or absolute_x >= self.num_rows
-                or absolute_y >= self.num_columns
-                or self.grid[absolute_x][absolute_y] == 1
-            ):
-                return True
+            if absolute_x > 0 and absolute_y > 0:
+                if self.grid[absolute_x][absolute_y] == 1:
+                    return True
         return False
 
     def set_piece(self):
@@ -144,7 +187,7 @@ class Game:
             for x in range(self.num_columns):
                 relative_x = x - self.piece_x
                 relative_y = y - self.piece_y
-                if (relative_x, relative_y) in self.piece:
+                if self.piece and ((relative_x, relative_y) in self.piece):
                     row_output += "o "
                 else:
                     row_output += "x " if self.grid[x][y] else ". "
@@ -165,27 +208,69 @@ class Game:
                     print(row_output)
             print('-' * 10)
 
+    def grid_to_image(self):
+        image = torch.from_numpy(np.array(self.grid)).float()
+        for x, y in self.piece:
+            absolute_x, absolute_y = self.piece_x+x, self.piece_y+y
+            image[absolute_x, absolute_y] = 0.5
+        return image
+
+    def transpose_grid(self, grid):
+        grid_t = list(zip(*grid))
+        return [list(row) for row in grid_t]
+
+    def check_rows(self):
+        grid = deepcopy(self.grid)
+        for x, y in self.piece:
+            absolute_x = self.piece_x + x
+            absolute_y = self.piece_y + y
+            grid[absolute_x][absolute_y] = 1
+
+        grid_t = self.transpose_grid(grid)
+        broken = False
+        for row in grid_t:
+            if all(row):
+                broken = True
+                self.piece = None
+                grid_t.remove(row)
+                grid_t.insert(0, [0] * self.num_columns)
+
+        if broken:
+            self.grid = self.transpose_grid(grid_t)
+
+        return broken
+
     def play_step(self, action):
+        game_over = False
+
         if not self.piece:
             self.init_piece()
 
-        self.piece_y += 1
-        if self.collision():
-            self.piece_y -= 1
-            self.set_piece()
+        if self.piece_y == 0 and self.piece_collision():
+            return self.points, True, self.score
 
         self.action_space[action]()
 
+        self.points += 1
+        self.piece_y += 1
 
-# if __name__ == "__main__":
-#     g = Game()
-#     g.reset()
-#     g.play_step(0)
-#     g.play_step(0)
-#     g.play_step(0)
-#     g.move_right()
-#     g.print_game()
-#     g.rotate_c()
-#     g.print_game()
-#     g.rotate_cc()
-#     g.print_game()
+        piece_to_set = False
+        if self.collision():
+            self.piece_y -= 1
+            piece_to_set = True
+
+        if self.check_rows():
+            self.score += 1
+            self.points += 100
+
+        if piece_to_set:
+            self.set_piece()
+
+        self.print_game()
+        print(self.points, game_over, self.score)
+
+        return self.points, game_over, self.score
+
+
+if __name__ == "__main__":
+    g = Game()
