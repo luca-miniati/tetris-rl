@@ -102,7 +102,7 @@ class Game:
 
     def reset(self):
         self.init_grid()
-        self.piece = None
+        self.init_piece()
         self.score = 0
         self.points = -8
 
@@ -176,7 +176,7 @@ class Game:
             absolute_x = self.piece_x + x
             absolute_y = self.piece_y + y
             self.grid[absolute_x][absolute_y] = 1
-        self.piece = None
+        self.init_piece()
 
     def print_game(self):
         print("\n[------TETRIS------]")
@@ -211,6 +211,7 @@ class Game:
         for x, y in self.piece:
             absolute_x, absolute_y = self.piece_x+x, self.piece_y+y
             image[absolute_x, absolute_y] = 0.5
+        image = image[None][None]
         return image
 
     def transpose_grid(self, grid):
@@ -234,9 +235,6 @@ class Game:
     def play_step(self, action):
         game_over = False
 
-        if not self.piece:
-            self.init_piece()
-
         if self.piece_y == 0 and self.piece_collision():
             return self.points, True, self.score
 
@@ -251,7 +249,6 @@ class Game:
             self.break_rows()
 
         self.print_game()
-        print(self.points, game_over, self.score)
 
         return self.points, game_over, self.score
 

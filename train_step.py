@@ -15,8 +15,9 @@ class TrainStep:
         target = out.clone()
         # check shapes
         for i in range(observation.shape[0]):
+            print(points.shape)
             x = points[i]
-            if not game_over[i]:
+            if not game_over[i].item():
                 x += self.gamma * torch.max(self.model(next_observation[i]))
             target[i][action] = x
 

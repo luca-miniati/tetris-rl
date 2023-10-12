@@ -69,8 +69,9 @@ class Agent:
 
     def learn_from_experience(self, observation, action, points,
                               next_observation, game_over):
-        action = torch.tensor(action)
-        points = torch.tensor(points)
+        action = torch.tensor([action])
+        points = torch.tensor([points])
+        game_over =  torch.tensor([game_over])
         self.train_step_handler.step(observation, action, points,
                                      next_observation, game_over)
 
