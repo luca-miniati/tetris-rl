@@ -1,8 +1,8 @@
 import torch.nn as nn
 
 
-class TetrisModel:
-    def __init__(self, image_dim, in_channels=3, action_space=5):
+class TetrisModel(nn.Module):
+    def __init__(self, in_channels=3, action_space=5):
         super().__init__()
 
         self.in_channels = in_channels

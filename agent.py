@@ -27,15 +27,17 @@ class Agent:
         return image
 
     def get_action(self, observation):
-        zeros = torch.zeros((1, self.num_actions)).float()
         p = random.random()
         if p < self.thresh:
-            i = random.randint(0, len(self.num_actions) - 1)
+            i = random.randint(0, self.num_actions - 1)
         else:
             pred = self.model(observation)
             i = torch.argmax(pred).item()
-        zeros[:, i] = 1.0
-        return zeros
+        return i
+
+    def get_random_action(self):
+        i = random.randint(0, self.num_actions - 1)
+        return i
 
     def save_experience(self, observation, action, points,
                         next_observation, game_over):

@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pygame
 import torch
-from copy import deepcopy
+# from copy import deepcopy
 
 
 class Game:
@@ -27,19 +27,19 @@ class Game:
                 [(0, 0), (1, 0), (2, 0), (2, 1)],
                 [(1, -1), (1, 0), (1, 1), (2, -1)],
                 [(0, 0), (1, 0), (2, 0), (0, -1)],
-                [(1, -1), (1, 0), (1, 1), (0, 1)],
+                [(1, -1), (1, 0), (1, 1), (0, 1)]
             ],
             [
                 [(0, 0), (1, 0), (2, 0), (2, -1)],
                 [(1, 0), (1, -1), (1, 1), (0, -1)],
                 [(0, 0), (1, 0), (2, 0), (0, 1)],
-                [(1, 0), (1, -1), (1, 1), (2, 1)],
+                [(1, 0), (1, -1), (1, 1), (2, 1)]
             ],
             [
                 [(0, 0), (1, 0), (2, 0), (1, 1)],
                 [(2, 0), (1, 0), (1, -1), (1, 1)],
                 [(0, 0), (1, 0), (2, 0), (1, -1)],
-                [(0, 0), (1, 0), (1, -1), (1, 1)],
+                [(0, 0), (1, 0), (1, -1), (1, 1)]
             ],
             [
                 [(0, 0), (1, 0), (0, 1), (1, 1)]
@@ -48,16 +48,16 @@ class Game:
                 [(0, 0), (1, 0), (2, 0), (3, 0)],
                 [(1, -1), (1, 0), (1, 1), (1, 2)],
                 [(0, 0), (1, 0), (2, 0), (-1, 0)],
-                [(1, -1), (1, 0), (1, 1), (1, -2)],
+                [(1, -1), (1, 0), (1, 1), (1, -2)]
             ],
             [
                 [(1, 0), (2, 0), (0, 1), (1, 1)],
-                [(1, 0), (0, 0), (0, -1), (1, 1)],
+                [(1, 0), (0, 0), (0, -1), (1, 1)]
             ],
             [
                 [(0, 0), (1, 0), (1, 1), (2, 1)],
                 [(0, 0), (1, 0), (0, 1), (1, -1)]
-            ],
+            ] 
         ]
 
         self.score = 0
@@ -116,8 +116,7 @@ class Game:
         if self.collision():
             self.piece_rotation_index -= 1
             self.piece_rotation_index %= len(self.pieces[self.piece_index])
-            self.piece = self.pieces[self.piece_index]
-            [self.piece_rotation_index]
+            self.piece = self.pieces[self.piece_index][self.piece_rotation_index]
 
     def rotate_cc(self):
         self.piece_rotation_index -= 1
@@ -126,8 +125,7 @@ class Game:
         if self.collision():
             self.piece_rotation_index += 1
             self.piece_rotation_index %= len(self.pieces[self.piece_index])
-            self.piece = self.pieces[self.piece_index]
-            [self.piece_rotation_index]
+            self.piece = self.pieces[self.piece_index][self.piece_rotation_index]
 
     def move_right(self):
         self.piece_x += 1
@@ -147,8 +145,8 @@ class Game:
     def hard_drop(self):
         while not self.collision():
             self.piece_y += 1
+            self.points += 1
         self.piece_y -= 1
-        self.set_piece()
 
     def collision(self):
         if self.piece:
@@ -219,26 +217,19 @@ class Game:
         grid_t = list(zip(*grid))
         return [list(row) for row in grid_t]
 
-    def check_rows(self):
-        grid = deepcopy(self.grid)
-        for x, y in self.piece:
-            absolute_x = self.piece_x + x
-            absolute_y = self.piece_y + y
-            grid[absolute_x][absolute_y] = 1
-
-        grid_t = self.transpose_grid(grid)
+    def break_rows(self):
+        grid_t = self.transpose_grid(self.grid)
         broken = False
         for row in grid_t:
             if all(row):
                 broken = True
-                self.piece = None
+                self.score += 1
+                self.points += 100
                 grid_t.remove(row)
                 grid_t.insert(0, [0] * self.num_columns)
 
         if broken:
             self.grid = self.transpose_grid(grid_t)
-
-        return broken
 
     def play_step(self, action):
         game_over = False
@@ -254,17 +245,10 @@ class Game:
         self.points += 1
         self.piece_y += 1
 
-        piece_to_set = False
         if self.collision():
             self.piece_y -= 1
-            piece_to_set = True
-
-        if self.check_rows():
-            self.score += 1
-            self.points += 100
-
-        if piece_to_set:
             self.set_piece()
+            self.break_rows()
 
         self.print_game()
         print(self.points, game_over, self.score)
